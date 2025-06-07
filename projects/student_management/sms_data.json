@@ -1,0 +1,31 @@
+{
+    "instructors": {
+        "1": {
+            "id_": 1,
+            "name": "Dr. Einstein",
+            "email": "einstein@university.edu",
+            "courses": []
+        }
+    },
+    "students": {
+        "1": {
+            "id_": 1,
+            "name": "Alice Smith",
+            "email": "alice.smith@student.edu",
+            "courses": [
+                "Relativity101"
+            ]
+        }
+    },
+    "courses": {
+        "Relativity101": {
+            "code": "Relativity101",
+            "title": "Relativity 101",
+            "capacity": 30,
+            "instructor_id": null,
+            "students_ids": [
+                1
+            ]
+        }
+    }
+}
