@@ -1,4 +1,4 @@
-# Inheritance
+# Inheritance in Python
 
 Inheritance allows us to define a class (the **derived** or **child** class) that inherits attributes and methods from another class (the **base** or **parent** class). This is a fundamental concept in object-oriented programming (OOP) that promotes code reuse and hierarchical relationships.
 

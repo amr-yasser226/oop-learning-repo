@@ -1,4 +1,4 @@
-# Abstract Base Classes (ABC) 
+# Abstract Base Classes (ABC) in Python
 
 An **Abstract Base Class (ABC)** is a class that cannot be instantiated on its own and is meant to serve as a blueprint for other classes. ABCs define methods that must be implemented by any concrete (non-abstract) subclass. In Python, the `abc` module provides the infrastructure to create and use abstract base classes.
 

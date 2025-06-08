@@ -1,4 +1,4 @@
-# Encapsulation, Getters & Setters, and `@property`
+# Encapsulation, Getters & Setters, and `@property` in Python
 
 This document covers three related topics—Encapsulation, traditional Getters & Setters, and computed-property patterns using `@property`—organized in a single file with one unified Table of Contents and a combined Summary at the end.
 
