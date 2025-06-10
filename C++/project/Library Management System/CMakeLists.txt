@@ -3,21 +3,20 @@ project(LibraryManager VERSION 1.0 LANGUAGES CXX)
 
 # -----------------------------------------------------------------------------
 #  If this build already has a cache from elsewhere, wipe it now
-#  to avoid the “CMakeCache.txt directory is different” error.
 # -----------------------------------------------------------------------------
 if (EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt")
   file(REMOVE "${CMAKE_BINARY_DIR}/CMakeCache.txt")
 endif()
 
 # -----------------------------------------------------------------------------
-#  C++ standard
+#  C++17
 # -----------------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # -----------------------------------------------------------------------------
-#  Allow overriding data directory (for books.db, etc.)
+#  Override data directory (for library.db, etc.)
 # -----------------------------------------------------------------------------
 if (NOT DEFINED DATA_DIR)
   set(DATA_DIR "${CMAKE_SOURCE_DIR}/data")
@@ -25,145 +24,88 @@ endif()
 add_definitions(-DDATA_DIR="${DATA_DIR}")
 
 # -----------------------------------------------------------------------------
-#  Find cpr (HTTP) and nlohmann_json (JSON) via vcpkg config
-#  Requires you to invoke CMake with:
-#    -DCMAKE_TOOLCHAIN_FILE=/home/amr-yasser/vcpkg/scripts/buildsystems/vcpkg.cmake
+#  Find external dependencies via vcpkg toolchain
 # -----------------------------------------------------------------------------
 find_package(cpr           CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+# Use CMake’s built-in FindSQLite3 module
+find_package(SQLite3 REQUIRED)
+
 # -----------------------------------------------------------------------------
-#  Define each module as its own library target
+#  Build the main application from all src/ files
 # -----------------------------------------------------------------------------
+add_executable(library_app
+  src/main.cpp
 
-# Book core logic
-add_library(book_core
-  Book/Book.cpp
-)
-target_include_directories(book_core PUBLIC
-  ${CMAKE_SOURCE_DIR}/Book
-)
+  # Core
+  src/Core/Utils/StringUtils.cpp
+  src/Core/BookService/BookService.cpp
+  src/Core/LoanService/LoanService.cpp
+  src/Core/RecommenderService/RecommenderService.cpp
 
-# Book recommender
-add_library(book_recommender
-  BookRecommender/BookRecommender.cpp
-)
-target_include_directories(book_recommender PUBLIC
-  ${CMAKE_SOURCE_DIR}/BookRecommender
-)
-
-# Feedback/rating
-add_library(feedback
-  FeedbackRate/FeedbackRate.cpp
-)
-target_include_directories(feedback PUBLIC
-  ${CMAKE_SOURCE_DIR}/FeedbackRate
-)
-
-# Loan processing
-add_library(loan
-  Loan/Loan.cpp
-)
-target_include_directories(loan PUBLIC
-  ${CMAKE_SOURCE_DIR}/Loan
-)
-
-# Room booking
-add_library(roombooking
-  RoomBooking/RoomBooking.cpp
-)
-target_include_directories(roombooking PUBLIC
-  ${CMAKE_SOURCE_DIR}/RoomBooking
-)
-
-# Authentication: login + registration
-add_library(auth
-  Login/Login.cpp
-  LoginRegisterHandler/LoginRegisterHandler.cpp
-  Register/Register.cpp
-)
-target_include_directories(auth PUBLIC
-  ${CMAKE_SOURCE_DIR}                      # project root
-  ${CMAKE_SOURCE_DIR}/Login
-  ${CMAKE_SOURCE_DIR}/LoginRegisterHandler
-  ${CMAKE_SOURCE_DIR}/Register
-  ${CMAKE_SOURCE_DIR}/SubscriptionPlan
-)
-target_link_libraries(auth
-  PUBLIC
-    book_core
-    book_recommender
-    loan
-    roombooking
-    feedback
-    subscription
-)
-
-# Subscription plans
-add_library(subscription
-  SubscriptionPlan/SubscriptionPlan.cpp
-)
-target_include_directories(subscription PUBLIC
-  ${CMAKE_SOURCE_DIR}/SubscriptionPlan
-)
-
-# Librarian admin
-add_library(librarian
-  Librarian/Librarian.cpp
-)
-target_include_directories(librarian PUBLIC
-  ${CMAKE_SOURCE_DIR}/Librarian
-)
-
-# Moderator admin
-add_library(moderator
-  Moderator/Moderator.cpp
-)
-target_include_directories(moderator PUBLIC
-  ${CMAKE_SOURCE_DIR}/Moderator
+  # UI
+  src/UI/BookUI/BookUI.cpp
+  src/UI/LoanUI/LoanUI.cpp
+  src/UI/RecommenderUI/RecommenderUI.cpp
+  src/UI/MainMenuUI/MainMenuUI.cpp
 )
 
 # -----------------------------------------------------------------------------
-#  Main application executable
+#  Test: standalone OnlineBookService search
 # -----------------------------------------------------------------------------
-add_executable(library_app main.cpp)
-
-target_link_libraries(library_app
-  PRIVATE
-    book_core
-    book_recommender
-    feedback
-    loan
-    roombooking
-    auth
-    subscription
-    librarian
-    moderator
-
-    # HTTP client and JSON parser
-    cpr::cpr
-    nlohmann_json::nlohmann_json
+add_executable(search_test
+  tests/SearchTest.cpp
+  src/Core/OnlineBookService/OnlineBookService.cpp
+)
+target_include_directories(search_test PRIVATE
+  ${CMAKE_SOURCE_DIR}/src/Core/OnlineBookService
+)
+target_link_libraries(search_test PRIVATE
+  cpr::cpr
+  nlohmann_json::nlohmann_json
 )
 
+
+# -----------------------------------------------------------------------------
+#  Include paths (so #include <XXX.h> works from src/)
+# -----------------------------------------------------------------------------
 target_include_directories(library_app PRIVATE
-  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src/Core
+  ${CMAKE_SOURCE_DIR}/src/Core/Utils
+  ${CMAKE_SOURCE_DIR}/src/Core/BookService
+  ${CMAKE_SOURCE_DIR}/src/Core/LoanService
+  ${CMAKE_SOURCE_DIR}/src/Core/RecommenderService
+
+  ${CMAKE_SOURCE_DIR}/src/UI/BookUI
+  ${CMAKE_SOURCE_DIR}/src/UI/RecommenderUI
+  ${CMAKE_SOURCE_DIR}/src/UI/LoanUI
+  ${CMAKE_SOURCE_DIR}/src/UI/MainMenuUI
 )
 
 # -----------------------------------------------------------------------------
-#  Platform-specific settings
+#  Link libraries
 # -----------------------------------------------------------------------------
-if (UNIX)
-  find_package(Threads REQUIRED)
-  target_link_libraries(library_app PRIVATE Threads::Threads)
-endif()
+target_link_libraries(library_app PRIVATE
+  # HTTP + JSON
+  cpr::cpr
+  nlohmann_json::nlohmann_json
+
+  # SQLite C API
+  SQLite::SQLite3
+
+  # Threads
+  Threads::Threads
+)
 
 # -----------------------------------------------------------------------------
-#  Installation rules (optional)
+#  Install rule
 # -----------------------------------------------------------------------------
-install(TARGETS library_app
-        RUNTIME DESTINATION bin)
+install(TARGETS library_app RUNTIME DESTINATION bin)
 
 # -----------------------------------------------------------------------------
 #  Testing support
 # -----------------------------------------------------------------------------
 enable_testing()
+
+
