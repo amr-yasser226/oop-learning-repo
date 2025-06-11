@@ -1,21 +1,23 @@
-#include "OnlineBookUI.h" // <--- Include the OnlineBookUI header
+#include "OnlineBookUI.h" // Include the OnlineBookUI header
 #include <iostream>
 #include <string>
-#include <limits> // For std::numeric_limits, used in OnlineBookUI.cpp
+#include <limits>
 
-// If you want to keep the "SearchTest is a placeholder" message, you can.
-// But for an interactive test, we'll replace it.
-// Here, we're essentially moving the interactive "main loop" for OnlineBookUI into this test file.
+// Define DATA_DIR macro. This tells the compiler where to find your 'data' folder.
+// This is typically passed by CMake, but for a standalone test that relies on it,
+// defining it here as a relative path from the *build directory* where the executable runs
+// ensures it's available.
+#ifndef DATA_DIR
+#define DATA_DIR "../data"
+#endif
 
 int main() {
-    std::cout << "--- Running Isolated Online Book Search UI Test ---\n";
+    std::cout << "--- Running Isolated Online Book Search UI Test with SQLite ---\n";
 
-    // You need to pass a path for the read list.
-    // Since this is just a test, you can point it to a temporary file
-    // or even /dev/null on Linux for testing purposes if you don't care about saving.
-    // For now, let's use a dummy path, or even your actual data path.
-    // Ensure the 'data' directory exists in your project root for this to work properly.
-    OnlineBookUI onlineBookInterface("data/test_readlist.txt"); 
+    // Pass the path to your SQLite database file.
+    // Using DATA_DIR ensures it goes into your project's data folder.
+    // For this test, it will create/use 'data/test_readlist.db'.
+    OnlineBookUI onlineBookInterface(DATA_DIR "/test_readlist.db"); 
 
     // This will start the interactive search loop from OnlineBookUI
     onlineBookInterface.run();
