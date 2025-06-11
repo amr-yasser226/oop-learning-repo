@@ -1,67 +1,72 @@
-#include "BookService.h"
-#include "StringUtils.h"
-#include <fstream>
-#include <sstream>
+#include "OnlineBookService.h"
+#include <cpr/cpr.h>
+#include <nlohmann/json.hpp>
+#include <algorithm>
+#include <iostream>
 
-using util::trim;
-using util::toLower;
+using json = nlohmann::json;
 
-BookService::BookService(const std::string& booksFilePath)
-  : sourceFile_(booksFilePath)
-{}
-
-void BookService::load() {
-    allBooks_.clear();
-    std::ifstream file(sourceFile_);
-    std::string line;
-    while (std::getline(file, line)) {
-        line = trim(line);
-        if (line.empty()) continue;
-        allBooks_.push_back(parseLine(line));
-    }
+// Helper to URL-encode space→'+'
+static std::string encode(const std::string& s) {
+    std::string r = s;
+    std::replace(r.begin(), r.end(), ' ', '+');
+    return r;
 }
 
-Book BookService::parseLine(const std::string& line) {
-    Book b;
-    std::istringstream iss(line);
-    std::string segment;
-    while (std::getline(iss, segment, ',')) {
-        auto pos = segment.find(':');
-        if (pos == std::string::npos) continue;
-        std::string key   = trim(segment.substr(0, pos));
-        std::string value = trim(segment.substr(pos + 1));
-        if (key == "Title")        b.title       = value;
-        else if (key == "Date")    b.date        = value;
-        else if (key == "Author")  b.author      = value;
-        else if (key == "Description") b.description = value;
-        else if (key == "Type")    b.type        = value;
-    }
-    return b;
-}
+std::vector<OnlineBook> OnlineBookService::search(const std::string& query, size_t limit, size_t offset) const {
+    std::vector<OnlineBook> results;
+    // New: Added offset parameter to the URL for pagination
+    auto url = "https://openlibrary.org/search.json?q=" + encode(query)
+             + "&limit=" + std::to_string(limit)
+             + "&offset=" + std::to_string(offset)
+             + "&fields=key,title,author_name,first_publish_year,cover_i,subject"; // Specify fields for efficiency
 
-std::vector<Book> BookService::search(const std::string& query) const {
-    std::vector<Book> results;
-    auto q = toLower(trim(query));
-    for (const auto& b : allBooks_) {
-        if (toLower(b.title).find(q) != std::string::npos) {
-            results.push_back(b);
+    auto resp = cpr::Get(cpr::Url{url});
+    if (resp.status_code != 200) {
+        std::cerr << "Error: Failed to fetch data from Open Library (status code: " << resp.status_code << ")\n";
+        return results;
+    }
+
+    auto j = json::parse(resp.text, nullptr, false);
+    if (!j.is_object() || !j.contains("docs")) return results;
+
+    for (auto& doc : j["docs"]) {
+        if (!doc.is_object()) continue;
+        OnlineBook b;
+        b.title       = doc.value("title", "N/A");
+        
+        if (doc.contains("author_name") && doc["author_name"].is_array() && !doc["author_name"].empty()) {
+            b.author = doc["author_name"][0].get<std::string>();
+        } else {
+            b.author = "Unknown Author";
         }
+        
+        b.publishYear = doc.contains("first_publish_year") && doc["first_publish_year"].is_number()
+                       ? std::to_string(doc["first_publish_year"].get<int>())
+                       : "N/A";
+                       
+        if (doc.contains("cover_i") && doc["cover_i"].is_number()) {
+            b.coverUrl = "https://covers.openlibrary.org/b/id/"
+                       + std::to_string(doc["cover_i"].get<int>()) + "-M.jpg";
+        }
+
+        // New: Extract subjects (genres)
+        if (doc.contains("subject") && doc["subject"].is_array()) {
+            for (const auto& sub : doc["subject"]) {
+                if (b.subjects.size() < 4) { // Limit to first 4 subjects
+                    b.subjects.push_back(sub.get<std::string>());
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        // New: Construct the URL from the book's key
+        if (doc.contains("key") && doc["key"].is_string()) {
+            b.openLibraryUrl = "https://openlibrary.org" + doc["key"].get<std::string>();
+        }
+
+        results.push_back(std::move(b));
     }
     return results;
-}
-
-void BookService::addToReadList(const Book& book, const std::string& readListPath) const {
-    std::ofstream out(readListPath, std::ios::app);
-    out << book.title << " by " << book.author << "\n";
-}
-
-std::vector<std::string> BookService::getReadList(const std::string& readListPath) const {
-    std::vector<std::string> lines;
-    std::ifstream in(readListPath);
-    std::string line;
-    while (std::getline(in, line)) {
-        if (!trim(line).empty())
-            lines.push_back(line);
-    }
-    return lines;
 }
