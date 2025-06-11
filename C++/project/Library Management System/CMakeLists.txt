@@ -21,7 +21,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (NOT DEFINED DATA_DIR)
   set(DATA_DIR "${CMAKE_SOURCE_DIR}/data")
 endif()
-add_definitions(-DDATA_DIR="${DATA_DIR}")
+add_definitions(-DDATA_DIR="${DATA_DIR}") # Defines DATA_DIR preprocessor macro
 
 # -----------------------------------------------------------------------------
 #  Find external dependencies via vcpkg toolchain
@@ -40,30 +40,36 @@ add_executable(library_app
 
   # Core
   src/Core/Utils/StringUtils.cpp
-  src/Core/BookService/BookService.cpp
+  src/Core/OnlineBookService/OnlineBookService.cpp
   src/Core/LoanService/LoanService.cpp
   src/Core/RecommenderService/RecommenderService.cpp
+  src/Core/Database/ReadListDB.cpp # <--- ADDED: New Database source file for library_app
 
   # UI
-  src/UI/BookUI/BookUI.cpp
+  src/UI/OnlineBookUI/OnlineBookUI.cpp
   src/UI/LoanUI/LoanUI.cpp
   src/UI/RecommenderUI/RecommenderUI.cpp
   src/UI/MainMenuUI/MainMenuUI.cpp
 )
 
 # -----------------------------------------------------------------------------
-#  Test: standalone OnlineBookService search
+#  Test: standalone OnlineBookService search (now runs the UI test)
 # -----------------------------------------------------------------------------
 add_executable(search_test
   tests/SearchTest.cpp
   src/Core/OnlineBookService/OnlineBookService.cpp
+  src/UI/OnlineBookUI/OnlineBookUI.cpp # <--- ADDED: Needs OnlineBookUI source for its functions
+  src/Core/Database/ReadListDB.cpp     # <--- ADDED: Needs ReadListDB source for SQLite
 )
 target_include_directories(search_test PRIVATE
   ${CMAKE_SOURCE_DIR}/src/Core/OnlineBookService
+  ${CMAKE_SOURCE_DIR}/src/UI/OnlineBookUI
+  ${CMAKE_SOURCE_DIR}/src/Core/Database # <--- ADDED: For ReadListDB.h
 )
 target_link_libraries(search_test PRIVATE
   cpr::cpr
   nlohmann_json::nlohmann_json
+  SQLite::SQLite3 # <--- ADDED: search_test now needs SQLite as well
 )
 
 
@@ -73,11 +79,12 @@ target_link_libraries(search_test PRIVATE
 target_include_directories(library_app PRIVATE
   ${CMAKE_SOURCE_DIR}/src/Core
   ${CMAKE_SOURCE_DIR}/src/Core/Utils
-  ${CMAKE_SOURCE_DIR}/src/Core/BookService
+  ${CMAKE_SOURCE_DIR}/src/Core/OnlineBookService
   ${CMAKE_SOURCE_DIR}/src/Core/LoanService
   ${CMAKE_SOURCE_DIR}/src/Core/RecommenderService
+  ${CMAKE_SOURCE_DIR}/src/Core/Database # <--- ADDED: For ReadListDB.h
 
-  ${CMAKE_SOURCE_DIR}/src/UI/BookUI
+  ${CMAKE_SOURCE_DIR}/src/UI/OnlineBookUI
   ${CMAKE_SOURCE_DIR}/src/UI/RecommenderUI
   ${CMAKE_SOURCE_DIR}/src/UI/LoanUI
   ${CMAKE_SOURCE_DIR}/src/UI/MainMenuUI
@@ -107,5 +114,3 @@ install(TARGETS library_app RUNTIME DESTINATION bin)
 #  Testing support
 # -----------------------------------------------------------------------------
 enable_testing()
-
-
