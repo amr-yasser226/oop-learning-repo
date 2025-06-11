@@ -1,24 +1,25 @@
 #pragma once
 #include "OnlineBookService.h"
+#include "ReadListDB.h" // Include the new database class
 #include <string>
-#include <vector> // Add this include for std::vector<OnlineBook>
+#include <vector>
 
 class OnlineBookUI {
 public:
-    OnlineBookUI(const std::string& readListPath);
+    explicit OnlineBookUI(const std::string& dbPath);
     void run();
 
 private:
     OnlineBookService svc_;
-    std::string readListPath_;
+    ReadListDB db_; // The new database member
     
-    // New members for pagination and search state
     std::string currentQuery_;
     size_t currentOffset_;
-    const size_t limit_ = 5; // Define the limit for results per page
+    const size_t limit_ = 5;
 
     void doSearch();
-    void displayResults(const std::vector<OnlineBook>& books); // Modified to take books
-    void addToReadList(const OnlineBook& b);
-    void handleSearchResults(); // New function to manage pagination and user choices
+    void displayResults(const std::vector<OnlineBook>& books);
+    // Renamed and modified: This function now handles prompting and validating user input for adding books.
+    void promptAndAddBooksToReadList(const std::vector<OnlineBook>& availableBooks);
+    void handleSearchResults();
 };
