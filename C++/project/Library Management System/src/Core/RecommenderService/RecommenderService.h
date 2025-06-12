@@ -1,32 +1,18 @@
 #ifndef RECOMMENDER_SERVICE_H
 #define RECOMMENDER_SERVICE_H
 
+#include "OnlineBookService.h" // For the OnlineBook struct
 #include <string>
 #include <vector>
-#include <unordered_map>
-#include "BookService.h"    // brings in Book and parseLine
-#include "StringUtils.h"    // brings in util::trim
 
 class RecommenderService {
 public:
-    explicit RecommenderService(const std::string& recommendationFilePath);
+    // Provides a curated list of popular subjects/genres for the user to choose from.
+    std::vector<std::string> getPopularSubjects() const;
 
-    // Load and bucket books by type
-    void load();
-
-    // Return all available types
-    std::vector<std::string> getTypes() const;
-
-    // Recommend up to count books for a given type
-    std::vector<Book> recommend(const std::string& type, size_t count = 2);
-
-    // Persist to read list
-    void addToReadList(const Book& book, const std::string& readListPath) const;
-
-private:
-    std::string sourceFile_;
-    std::unordered_map<std::string, std::vector<Book>> byType_;
-    std::unordered_map<std::string, std::vector<Book>> lastRecs_;
+    // Recommends books from the Open Library API based on a list of subjects.
+    // Supports pagination with limit and offset.
+    std::vector<OnlineBook> recommend(const std::vector<std::string>& subjects, size_t limit = 5, size_t offset = 0) const;
 };
 
 #endif // RECOMMENDER_SERVICE_H
