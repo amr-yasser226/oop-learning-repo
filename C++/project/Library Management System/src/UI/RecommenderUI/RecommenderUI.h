@@ -2,19 +2,27 @@
 #define RECOMMENDER_UI_H
 
 #include "RecommenderService.h"
+#include "ReadListDB.h" // For adding books to the database
 #include <string>
+#include <vector>
 
 class RecommenderUI {
 public:
-    RecommenderUI(RecommenderService& svc, const std::string& readListPath);
-    void runMenu();
+    explicit RecommenderUI(const std::string& dbPath);
+    void run();
 
 private:
-    RecommenderService& svc_;
-    std::string readListPath_;
+    RecommenderService svc_;
+    ReadListDB db_;
 
-    void showTypes();
-    void recommendLoop();
+    std::vector<std::string> currentSubjects_;
+    size_t currentOffset_;
+    const size_t limit_ = 5;
+
+    void selectGenres();
+    void handleRecommendations();
+    void displayRecommendations(const std::vector<OnlineBook>& books);
+    void promptAndAddBooksToReadList(const std::vector<OnlineBook>& availableBooks);
 };
 
 #endif // RECOMMENDER_UI_H
