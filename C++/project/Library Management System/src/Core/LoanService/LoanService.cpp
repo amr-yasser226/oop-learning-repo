@@ -1,53 +1,66 @@
 #include "LoanService.h"
-#include "StringUtils.h"
-#include <fstream>
-#include <ctime>
+#include <iostream>   // <--- ADDED: For std::cout and std::cerr
+#include <ctime>      // For std::time, std::localtime, std::mktime, std::strftime
+#include <algorithm>  // For std::transform, std::tolower if needed in StringUtils (already there)
+#include <cpr/cpr.h>  // If OnlineBookService is in same compilation unit, though typically it's already linked
 
 using util::trim;
+using util::toLower; // Assuming toLower is in util namespace
 
-LoanService::LoanService(const std::string& booksFilePath,
-                         const std::string& requestFilePath)
- : booksFile_(booksFilePath), requestFile_(requestFilePath)
+// Constructor: Initializes members with provided references and database path.
+LoanService::LoanService(OnlineBookService& onlineSvc, const std::string& loanDbPath)
+ : onlineBookService_(onlineSvc), loanRequestDB_(loanDbPath)
 {}
 
-bool LoanService::existsInCatalog(const std::string& title) const {
-    std::ifstream in(booksFile_);
-    std::string line;
-    while (std::getline(in, line)) {
-        if (util::toLower(line).find(util::toLower("Title: " + title)) != std::string::npos)
-            return true;
-    }
-    return false;
+// Checks if a book exists in the online catalog using OnlineBookService.
+bool LoanService::existsInOnlineCatalog(const std::string& title) const {
+    // Use the online book service to search for the book.
+    // We only need to check if *any* result comes back.
+    // Limit to 1 result for efficiency if we only need to know existence.
+    auto results = onlineBookService_.search(title, 1); 
+    return !results.empty();
 }
 
 LoanResult LoanService::calculateDates() const {
     time_t now = std::time(nullptr);
     tm borrow = *std::localtime(&now);
+    
+    // Set borrow date to tomorrow
     borrow.tm_mday += 1;
-    std::mktime(&borrow);
+    std::mktime(&borrow); // Normalize the date
 
     tm due = borrow;
-    due.tm_mday += 21;
-    std::mktime(&due);
+    due.tm_mday += 21; // Add 21 days for the due date
+    std::mktime(&due); // Normalize the date
 
-    char buf1[11], buf2[11];
+    char buf1[11], buf2[11]; // Buffer for YYYY-MM-DD (10 chars + null terminator)
     std::strftime(buf1, sizeof(buf1), "%Y-%m-%d", &borrow);
     std::strftime(buf2, sizeof(buf2), "%Y-%m-%d", &due);
 
     return {buf1, buf2};
 }
 
+// Saves the loan request to the SQLite database.
 void LoanService::saveRequest(const std::string& title, const LoanResult& lr) const {
-    std::ofstream out(requestFile_, std::ios::app);
-    out << "Book Title: " << title << "\n"
-        << "Borrow Date: " << lr.borrowDate << "\n"
-        << "Due Date: " << lr.dueDate << "\n"
-        << "-------------------\n";
+    LoanRecord record;
+    record.bookTitle = title;
+    record.borrowDate = lr.borrowDate;
+    record.dueDate = lr.dueDate;
+
+    // Call insertLoan on the mutable loanRequestDB_ member
+    if (!loanRequestDB_.insertLoan(record)) {
+        std::cerr << "Error: Failed to save loan request for '" << title << "' to database.\n";
+    }
 }
 
+// Attempts to borrow a book.
 std::optional<LoanResult> LoanService::borrowBook(const std::string& title) {
-    if (!existsInCatalog(title)) return std::nullopt;
-    auto lr = calculateDates();
-    saveRequest(title, lr);
-    return lr;
+    if (!existsInOnlineCatalog(title)) {
+        std::cout << "Book '" << title << "' not found in online catalog.\n";
+        return std::nullopt; // Book not found
+    }
+
+    auto lr = calculateDates(); // Calculate borrow and due dates
+    saveRequest(title, lr);     // Save the loan request to the database
+    return lr;                  // Return the loan result
 }
