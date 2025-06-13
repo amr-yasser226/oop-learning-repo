@@ -62,6 +62,8 @@ void RecommenderUI::selectGenres() {
 }
 
 
+// In src/UI/RecommenderUI/RecommenderUI.cpp
+
 void RecommenderUI::handleRecommendations() {
     currentOffset_ = 0; // Reset for new recommendation session
     bool continue_recommendation_session = true;
@@ -77,8 +79,8 @@ void RecommenderUI::handleRecommendations() {
         
         if (recommendations.empty() && currentOffset_ == 0) {
             std::cout << "No recommendations found for the selected combination of genres.\n";
-            selectGenres(); // Go back to genre selection
-            return;
+            // No need to call selectGenres() here, just break and return to main menu
+            break;
         }
         
         displayRecommendations(recommendations);
@@ -92,9 +94,10 @@ void RecommenderUI::handleRecommendations() {
         bool validChoiceMade = false;
         while (!validChoiceMade) {
             char choice;
-            std::cout << "\nOptions: (N)ext Page, (R)etry with new genres, (Q)uit -> ";
+            // Changed "(Q)uit" to "(M)ain Menu" in the prompt
+            std::cout << "\nOptions: (N)ext Page, (R)etry with new genres, (M)ain Menu -> ";
             std::cin >> choice;
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // consume newline
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
             switch (toupper(choice)) {
                 case 'N':
@@ -102,16 +105,19 @@ void RecommenderUI::handleRecommendations() {
                         std::cout << "No more pages available. Please make another choice.\n";
                     } else {
                         currentOffset_ += limit_;
-                        validChoiceMade = true; // Continue recommendation loop
+                        validChoiceMade = true;
                     }
                     break;
                 case 'R':
-                    selectGenres(); // Start a new genre selection
-                    return; // Exit current handler
-                case 'Q':
-                    exit(0);
+                    selectGenres(); 
+                    return; 
+                case 'M': // Changed from 'Q'
+                    // Set flags to exit both the inner and outer loops of this function
+                    continue_recommendation_session = false;
+                    validChoiceMade = true;
+                    break;
                 default:
-                    std::cout << "Invalid choice. Please enter 'N', 'R', or 'Q'.\n";
+                    std::cout << "Invalid choice. Please enter 'N', 'R', or 'M'.\n";
                     break;
             }
         }
