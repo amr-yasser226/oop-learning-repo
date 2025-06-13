@@ -145,15 +145,17 @@ void OnlineBookUI::promptAndAddBooksToReadList(const std::vector<OnlineBook>& av
 }
 
 
+// In src/UI/OnlineBookUI/OnlineBookUI.cpp
+
 void OnlineBookUI::handleSearchResults() {
-    bool continue_pagination_session = true; // Controls the pagination loop for a single query
+    bool continue_pagination_session = true; 
 
     while (continue_pagination_session) {
         auto results = svc_.search(currentQuery_, limit_, currentOffset_);
         
         if (results.empty() && currentOffset_ == 0) {
             std::cout << "No results found for “" << currentQuery_ << "”.\n";
-            break; // Exit if no initial results
+            break; 
         }
 
         displayResults(results);
@@ -162,44 +164,38 @@ void OnlineBookUI::handleSearchResults() {
             std::cout << "--- End of results ---\n";
         }
         
-        // Call the new interactive function to handle adding books
         promptAndAddBooksToReadList(results);
 
-        // Only prompt for next page/new search if there are more results or it's not the first page
-        if (results.size() == limit_ || currentOffset_ > 0) {
-            bool validChoiceMade = false;
-            while (!validChoiceMade) { // Loop until a valid choice is made
-                char choice;
-                std::cout << "\nOptions: (N)ext Page, (S)earch for a new book, (Q)uit -> ";
-                std::cin >> choice;
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // consume newline
+        bool validChoiceMade = false;
+        while (!validChoiceMade) {
+            char choice;
+            // Changed "(Q)uit" to "(M)ain Menu"
+            std::cout << "\nOptions: (N)ext Page, (S)earch again, (M)ain Menu -> ";
+            std::cin >> choice;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                switch (toupper(choice)) {
-                    case 'N':
-                        // Only allow next page if there were a full 'limit' of results on this page
-                        if (results.empty() || results.size() < limit_) { 
-                            std::cout << "No more pages available. ";
-                            validChoiceMade = false; // Stay in loop if 'N' chosen but no more pages
-                        } else {
-                            currentOffset_ += limit_; // Move to the next page
-                            validChoiceMade = true; // Exit loop, continue pagination session
-                        }
-                        break;
-                    case 'S':
-                        continue_pagination_session = false; // End current pagination session
-                        doSearch(); // Start a new search immediately
-                        return; // Exit handleSearchResults
-                    case 'Q':
-                        exit(0); // Exit the entire program
-                    default:
-                        std::cout << "Invalid choice. Please enter (N), (S), or (Q).\n";
-                        // validChoiceMade remains false, so loop continues
-                        break;
-                }
+            switch (toupper(choice)) {
+                case 'N':
+                    if (results.empty() || results.size() < limit_) { 
+                        std::cout << "No more pages available. ";
+                        validChoiceMade = false;
+                    } else {
+                        currentOffset_ += limit_;
+                        validChoiceMade = true;
+                    }
+                    break;
+                case 'S':
+                    doSearch();
+                    return;
+                case 'M': // Changed from 'Q'
+                    // Set flags to exit the loops and return to main menu
+                    continue_pagination_session = false;
+                    validChoiceMade = true;
+                    break;
+                default:
+                    std::cout << "Invalid choice. Please enter (N), (S), or (M).\n";
+                    break;
             }
-        } else {
-            // If there were no more results and not on the first page, end pagination session
-            continue_pagination_session = false;
         }
     }
 }
